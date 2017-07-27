@@ -1,12 +1,20 @@
 GEM
   remote: https://rubygems.org/
   specs:
+    eventmachine (1.0.9)
+    ffi (1.9.18)
+    mqtt (0.5.0)
+    pi_piper (2.0.0)
+      eventmachine (= 1.0.9)
+      ffi
     ruby-dbus (0.13.0)
 
 PLATFORMS
   ruby
 
 DEPENDENCIES
+  mqtt
+  pi_piper
   ruby-dbus
 
 BUNDLED WITH

@@ -114,36 +114,62 @@ class SensorTag
     m * (0.01 * e)
   end
 
+  def handle_ir_temperature_values(values)
+    amb_lower_byte = values[2]
+    amb_upper_byte = values[3]
+    ambient = convert_ir_temperature_value(amb_upper_byte, amb_lower_byte)
+
+    obj_lower_byte = values[0]
+    obj_upper_byte = values[1]
+    object = convert_ir_temperature_value(obj_upper_byte, obj_lower_byte)
+
+    return ambient, object
+  end
+
   def read_ir_temperature
     service = @device.service_by_uuid(SensorTag::UUID::IR_TEMPERATURE_SERVICE)
     characteristic = service.characteristic_by_uuid(SensorTag::UUID::IR_TEMPERATURE_DATA)
     characteristic.start_notify do |v|
-      amb_lower_byte = v[2]
-      amb_upper_byte = v[3]
-      ambient = convert_ir_temperature_value(amb_upper_byte, amb_lower_byte)
-
-      obj_lower_byte = v[0]
-      obj_upper_byte = v[1]
-      object = convert_ir_temperature_value(obj_upper_byte, obj_lower_byte)
-
+      ambient, object = handle_ir_temperature_values(v)
       yield(ambient, object)
     end
+  end
+
+  def read_ir_temperature_once
+    service = @device.service_by_uuid(SensorTag::UUID::IR_TEMPERATURE_SERVICE)
+    characteristic = service.characteristic_by_uuid(SensorTag::UUID::IR_TEMPERATURE_DATA)
+    v = characteristic.read
+    ambient, object = handle_ir_temperature_values(v)
+    return ambient, object
+  end
+
+  def handle_humidity_values(values)
+    temp_lower_byte = values[0]
+    temp_upper_byte = values[1]
+    temp = convert_temp_value(temp_upper_byte, temp_lower_byte)
+
+    hum_lower_byte = values[2]
+    hum_upper_byte = values[3]
+    hum = convert_humidity_value(hum_upper_byte, hum_lower_byte)
+
+    return temp, hum
   end
 
   def read_humidity
     service = @device.service_by_uuid(SensorTag::UUID::HUMIDITY_SERVICE)
     characteristic = service.characteristic_by_uuid(SensorTag::UUID::HUMIDITY_DATA)
     characteristic.start_notify do |v|
-      temp_lower_byte = v[0]
-      temp_upper_byte = v[1]
-      temp = convert_temp_value(temp_upper_byte, temp_lower_byte)
-
-      hum_lower_byte = v[2]
-      hum_upper_byte = v[3]
-      hum = convert_humidity_value(hum_upper_byte, hum_lower_byte)
-
+      temperature, humidity = handle_humidity_values(v)
       yield(temp, hum)
     end
+  end
+
+  def read_humidity_once
+    service = @device.service_by_uuid(SensorTag::UUID::HUMIDITY_SERVICE)
+    characteristic = service.characteristic_by_uuid(SensorTag::UUID::HUMIDITY_DATA)
+    v = characteristic.read
+    temperature, humidity = handle_humidity_values(v)
+    return temperature, humidity
   end
 
   def read_movement
@@ -187,34 +213,57 @@ class SensorTag
     end
   end
 
+  def handle_barometer_values(values)
+    temp_lower  = values[0]
+    temp_middle = values[1]
+    temp_upper  = values[2]
+    temp = convert_barometer_value(temp_upper, temp_middle, temp_lower)
+
+    press_lower  = values[3]
+    press_middle = values[4]
+    press_upper  = values[5]
+    press = convert_barometer_value(press_upper, press_middle, press_lower)
+
+    return temp, press
+  end
+
   def read_barometer
     service = @device.service_by_uuid(SensorTag::UUID::BAROMETER_SERVICE)
     characteristic = service.characteristic_by_uuid(SensorTag::UUID::BAROMETER_DATA)
     characteristic.start_notify do |v|
-      temp_lower  = v[0]
-      temp_middle = v[1]
-      temp_upper  = v[2]
-      temp = convert_barometer_value(temp_upper, temp_middle, temp_lower)
-
-      press_lower  = v[3]
-      press_middle = v[4]
-      press_upper  = v[5]
-      press = convert_barometer_value(press_upper, press_middle, press_lower)
-
+      temp, press = handle_barometer_values(v)
       yield(temp, press)
     end
+  end
+
+  def read_barometer_once
+    service = @device.service_by_uuid(SensorTag::UUID::BAROMETER_SERVICE)
+    characteristic = service.characteristic_by_uuid(SensorTag::UUID::BAROMETER_DATA)
+    v = characteristic.read
+    temp, press = handle_barometer_values(v)
+    return temp, press
+  end
+
+  def handle_luxometer_values(values)
+    lux_lower  = values[0]
+    lux_upper  = values[1]
+    convert_luxometer_value(lux_upper, lux_lower)
   end
 
   def read_luxometer
     service = @device.service_by_uuid(SensorTag::UUID::LUXOMETER_SERVICE)
     characteristic = service.characteristic_by_uuid(SensorTag::UUID::LUXOMETER_DATA)
     characteristic.start_notify do |v|
-      lux_lower  = v[0]
-      lux_upper  = v[1]
-      lux = convert_luxometer_value(lux_upper, lux_lower)
-
+      lux = handle_luxometer_values(v)
       yield(lux)
     end
+  end
+
+  def read_luxometer_once
+    service = @device.service_by_uuid(SensorTag::UUID::LUXOMETER_SERVICE)
+    characteristic = service.characteristic_by_uuid(SensorTag::UUID::LUXOMETER_DATA)
+    v = characteristic.read
+    handle_luxometer_values(v)
   end
 
   def read_battery_level
