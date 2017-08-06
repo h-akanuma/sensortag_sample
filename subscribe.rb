@@ -1,11 +1,16 @@
 require 'bundler/setup'
 require 'mqtt'
 require 'json'
+require 'open3'
+require 'uri'
+require 'open-uri'
 require './led.rb'
 
 BEAM_URL = 'beam.soracom.io'
 TOPIC = '$aws/things/sensor_tag/shadow/update'
 DELTA_TOPIC = "#{TOPIC}/delta"
+SPEECH_TOPIC = '/iot/sensor_tag/voices'
+SOUNDS_DIR = '/home/pi/sounds/voices'
 
 LED_GPIO = 22
 
@@ -33,7 +38,42 @@ def toggle_led(led:, light_power:)
   light_power == 'on' ? led.on : led.off
 end
 
+def run_speech_thread(log)
+  log.info("Running speech thread.")
+  Thread.new do
+    begin
+      MQTT::Client.connect(host: BEAM_URL) do |client|
+        client.subscribe(SPEECH_TOPIC)
+        log.info("Subscribed to the topic: #{SPEECH_TOPIC}")
+
+        client.get do |topic, json|
+          speech_url = JSON.parse(json)['speech_url']
+          speech_uri = URI.parse(speech_url)
+          speech_file = speech_uri.path.split('/').last
+          speech_file_path = "#{SOUNDS_DIR}/#{speech_file}"
+
+          unless File.exist?(speech_file_path)
+            log.info("Opening URL: #{speech_url}")
+            open(speech_url) do |file|
+              open(speech_file_path, 'w+b') do |out|
+                out.write(file.read)
+              end
+            end
+          end
+
+          log.info("Speaking: #{speech_file_path}")
+          Open3.capture3("mpg321 #{speech_file_path}")
+        end
+      end
+    rescue => e
+      log.error(e.backtrace.join("\n"))
+    end
+  end
+end
+
 led = LED.new(pin: LED_GPIO)
+
+run_speech_thread(log)
 
 MQTT::Client.connect(host: BEAM_URL) do |client|
   initial_state = statement(ambient: 0, object: 0, humidity: 0, pressure: 0, lux: 0, light_power: 'off').to_json
