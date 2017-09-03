@@ -160,7 +160,7 @@ class SensorTag
     characteristic = service.characteristic_by_uuid(SensorTag::UUID::HUMIDITY_DATA)
     characteristic.start_notify do |v|
       temperature, humidity = handle_humidity_values(v)
-      yield(temp, hum)
+      yield(temperature, humidity)
     end
   end
 
